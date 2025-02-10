@@ -1,13 +1,30 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:actual/common/component/custom_text_form_field.dart';
 import 'package:actual/common/const/colors.dart';
+import 'package:actual/common/const/data.dart';
 import 'package:actual/common/layout/default_layout.dart';
+import 'package:actual/common/view/root_tab.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  String username = '';
+  String password = '';
+
+  @override
   Widget build(BuildContext context) {
+
+
     return DefaultLayout(
       child: SingleChildScrollView(
         child: SafeArea(
@@ -27,16 +44,48 @@ class LoginScreen extends StatelessWidget {
                 ),
                 CustomTextFormField(
                   hintText: '이메일을 입력해주세요.',
-                  onChanged: (String value) {},
+                  onChanged: (String value) {
+                    username = value;
+                  },
                 ),
                 const SizedBox(height: 16),
                 CustomTextFormField(
                   hintText: '비밀번호를 입력해주세요.',
-                  onChanged: (String value) {},
+                  onChanged: (String value) {
+                    password = value;
+                  },
                   obscureText: true,
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final rawString = '$username:$password';
+                    Codec<String, String> stringToBase64 = utf8.fuse(base64);
+                    String token = stringToBase64.encode(rawString);
+
+                    final resp = await dio.post(
+                      'http://$ip/auth/login',
+                      options: Options(
+                        headers: {
+                          'authorization': 'Basic $token',
+                        },
+                      ),
+                    );
+                    final refreshToken = resp.data['refreshToken'];
+                    final accessToken = resp.data['accessToken'];
+
+                    await storage.write(
+                        key: REFRESH_TOKEN_KEY, value: refreshToken);
+                    await storage.write(
+                        key: ACCESS_TOKEN_KEY, value: accessToken);
+
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RootTab(),
+                      ),
+                    );
+
+                  },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: PRIMARY_COLOR,
                     foregroundColor: Colors.white,
@@ -47,7 +96,9 @@ class LoginScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () async {
+
+                  },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.black,
                   ),
